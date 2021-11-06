@@ -44,7 +44,7 @@ def read_input_file(pred_config):
     with open(pred_config.input_file, "r", encoding="utf-8") as f:
         for line in f:
             line = line.strip()
-            words = line.split()
+            words = list(line)
             lines.append(words)
 
     return lines
@@ -196,15 +196,30 @@ def predict(pred_config):
                 slot_preds_list[i].append(slot_label_map[slot_preds[i][j]])
 
     # Write to output file
+    # with open(pred_config.output_file, "w", encoding="utf-8") as f:
+    #     for words, slot_preds, intent_pred in zip(lines, slot_preds_list, intent_preds):
+    #         line = ""
+    #         for word, pred in zip(words, slot_preds):
+    #             if pred == 'O':
+    #                 line = line + word + " "
+    #             else:
+    #                 line = line + "[{}:{}] ".format(word, pred)
+    #         f.write("<{}> -> {}\n".format(intent_label_lst[intent_pred], line.strip()))
     with open(pred_config.output_file, "w", encoding="utf-8") as f:
         for words, slot_preds, intent_pred in zip(lines, slot_preds_list, intent_preds):
-            line = ""
-            for word, pred in zip(words, slot_preds):
-                if pred == 'O':
-                    line = line + word + " "
+            slots = list()
+            slot = str()
+            for i in range(len(words)):
+                if slot_preds[i] == 'O':
+                    if slot == '':
+                        continue
+                    slots.append({slot_preds[i - 1].split('-')[1]: slot})
+                    slot = str()
                 else:
-                    line = line + "[{}:{}] ".format(word, pred)
-            f.write("<{}> -> {}\n".format(intent_label_lst[intent_pred], line.strip()))
+                    slot += words[i]
+            if slot != '':
+                slots.append({slot_preds[len(words) - 1].split('-')[1]: slot})
+            f.write("intent: {} -> slots: {}\n".format(intent_label_lst[intent_pred], slots))
 
     logger.info("Prediction Done!")
 
@@ -215,7 +230,7 @@ if __name__ == "__main__":
 
     parser.add_argument("--input_file", default="sample_pred_in.txt", type=str, help="Input file for prediction")
     parser.add_argument("--output_file", default="sample_pred_out.txt", type=str, help="Output file for prediction")
-    parser.add_argument("--model_dir", default="./atis_model", type=str, help="Path to save, load model")
+    parser.add_argument("--model_dir", default="./book_model", type=str, help="Path to save, load model")
 
     parser.add_argument("--batch_size", default=32, type=int, help="Batch size for prediction")
     parser.add_argument("--no_cuda", action="store_true", help="Avoid using CUDA when available")
